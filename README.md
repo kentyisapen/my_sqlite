@@ -3,6 +3,6 @@
 - https://cstack.github.io/db_tutorial/
 
 ```
-gcc -o main.c db
-./db
+$ gcc -o main.c db
+$ ./db mydb.db
 ```
