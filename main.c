@@ -3,11 +3,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 typedef struct {
     char* buffer;
     size_t buffer_length;
-    __ssize_t input_length;
+    ssize_t input_length;
 } InputBuffer;
 
 typedef enum { EXECUTE_SUCCESS, EXECUTE_TABLE_FULL } ExecuteResult;
@@ -77,7 +78,7 @@ void deserialize_row(void* source, Row* destination) {
 void* row_slot(Table* table, uint32_t row_num) {
     uint32_t page_num = row_num / ROWS_PER_PAGE;
     void* page = table->pages[page_num];
-    if (page == NULL) {
+    if (!page) {
         page = table->pages[page_num] = malloc(PAGE_SIZE);
     }
     uint32_t row_offset = row_num % ROWS_PER_PAGE;
@@ -88,17 +89,7 @@ void* row_slot(Table* table, uint32_t row_num) {
 Table* new_table() {
     Table* table = (Table*)malloc(sizeof(Table));
     table->num_rows = 0;
-    for (uint32_t i = 0; i < TABLE_MAX_PAGES; i++) {
-        table->pages[i] = NULL;
-    }
     return table;
-}
-
-void free_table(Table* table) {
-    for (int i = 0; table->pages[i]; i++) {
-        free(table->pages[i]);
-    }
-    free(table);
 }
 
 InputBuffer* new_input_buffer() {
@@ -113,7 +104,7 @@ InputBuffer* new_input_buffer() {
 void print_prompt() { printf("db > "); }
 
 void read_input(InputBuffer* input_buffer) {
-    __ssize_t bytes_read =
+    ssize_t bytes_read =
         getline(&(input_buffer->buffer), &(input_buffer->buffer_length), stdin);
     if (bytes_read <= 0) {
         printf("Error reading input\n");
@@ -124,15 +115,8 @@ void read_input(InputBuffer* input_buffer) {
     input_buffer->buffer[bytes_read - 1] = 0;
 }
 
-void close_input_buffer(InputBuffer* input_buffer) {
-    free(input_buffer->buffer);
-    free(input_buffer);
-}
-
 MetaCommandResult do_meta_command(InputBuffer* input_buffer, Table* table) {
     if (strcmp(input_buffer->buffer, ".exit") == 0) {
-        close_input_buffer(input_buffer);
-        free_table(table);
         exit(EXIT_SUCCESS);
     } else {
         return META_COMMAND_UNRECOGNIZED_COMMAND;
